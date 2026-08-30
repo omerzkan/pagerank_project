@@ -12,7 +12,7 @@ from toolkit import (load_dat, build_csr, dangling_mask, make_matvec,
                      power_method)
 
 DATA = Path(__file__).parent / "data" / "hollins.dat"   # adjust if needed
-M_VAL = 0.15
+DAMPING = 0.15
 TOL = 1e-12
 
 
@@ -41,20 +41,20 @@ print(f"storage : CSR {csr_mb:.3f} MB vs dense {dense_mb:.1f} MB "
 """ ************************* Solve ************************* """
 
 t0 = time.perf_counter()
-x, k, diff, _ = power_method(mv, n, m=M_VAL, tol=TOL)
+x, k, diff, _ = power_method(mv, n, m=DAMPING, tol=TOL)
 elapsed = time.perf_counter() - t0
 
 # residual ||Mx - x||_1 : an independent check, NOT the stopping criterion
-res = np.abs((1.0 - M_VAL) * mv(x) + M_VAL / n - x).sum()
+res = np.abs((1.0 - DAMPING) * mv(x) + DAMPING / n - x).sum()
 
-print(f"\nm = {M_VAL}, tol = {TOL:g}")
+print(f"\nm = {DAMPING}, tol = {TOL:g}")
 print(f"power method  : {k} iterations, {elapsed:.3f} s")
 print(f"last increment: {diff:.2e}")
 print(f"residual      : {res:.2e}")
 
 assert abs(x.sum() - 1.0) < 1e-10, "scores must sum to 1 (dangling mass leaked?)"
-assert x.min() >= M_VAL / n - 1e-12, "every page scores at least m/n [Exercise 9]"
-print(f"sum(x) = {x.sum():.12f}   min(x) = {x.min():.3e}   (m/n = {M_VAL / n:.3e})")
+assert x.min() >= DAMPING / n - 1e-12, "every page scores at least m/n [Exercise 9]"
+print(f"sum(x) = {x.sum():.12f}   min(x) = {x.min():.3e}   (m/n = {DAMPING / n:.3e})")
 
 
 """ ************************* Ranking ************************* """

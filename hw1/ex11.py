@@ -16,7 +16,7 @@ import numpy as np
 from toolkit import build_dense_A, build_M, eig_rank, power_method
 from webs import EX11_WEB, EX11_N
 
-M_VAL = 0.15
+DAMPING = 0.15
 TOL = 1e-12
 
 
@@ -26,9 +26,9 @@ A = build_dense_A(EX11_WEB, EX11_N)
 
 # power_method applies x <- (1-m) A x + m s, i.e. equation (3.2),
 # so it never forms M explicitly.
-x, k, diff, _ = power_method(lambda v: A @ v, EX11_N, m=M_VAL, tol=TOL)
+x, k, diff, _ = power_method(lambda v: A @ v, EX11_N, m=DAMPING, tol=TOL)
 
-print(f"\nm = {M_VAL}, tol = {TOL:g}, converged in {k} iterations")
+print(f"\nm = {DAMPING}, tol = {TOL:g}, converged in {k} iterations")
 for page in range(1, EX11_N + 1):
     print(f"  page {page}: {x[page - 1]:.6f}")
 
@@ -37,7 +37,7 @@ print(f"\nsum = {x.sum():.6f}      min = {x.min():.6f}  (all components positive
 
 """ ******************* Cross-check with a direct eigensolver ******************* """
 
-M = build_M(A, M_VAL)
+M = build_M(A, DAMPING)
 x_eig, _ = eig_rank(M)
 print(f"max difference vs. numpy.linalg.eig: {np.abs(x - x_eig).max():.2e}")
 

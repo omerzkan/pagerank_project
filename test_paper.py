@@ -4,7 +4,7 @@ from toolkit import (build_dense_A, eig_rank, build_M, power_method,
                      build_csr, csr_matvec, dangling_mask, make_matvec)
 from webs import FIG_2_1, FIG_2_1_N, FIG_2_2, FIG_2_2_N
 
-M_VAL = 0.15
+DAMPING = 0.15
 TOL = 1e-12
 
 
@@ -36,12 +36,12 @@ PAPER_M = np.array([
     [0.32083, 0.4625, 0.0375, 0.4625],
     [0.32083, 0.4625, 0.0375, 0.0375],
 ])
-M = build_M(A, M_VAL)
+M = build_M(A, DAMPING)
 assert np.allclose(M, PAPER_M, atol=1e-5), "M does not match the paper"
 print("M matches the paper, max entrywise diff =", f"{np.abs(M - PAPER_M).max():.2e}")
 
 """ (3) power method -> 0.368, 0.142, 0.288, 0.202  [p. 6] """
-x, k, diff, _ = power_method(lambda v: A @ v, FIG_2_1_N, m=M_VAL, tol=TOL)
+x, k, diff, _ = power_method(lambda v: A @ v, FIG_2_1_N, m=DAMPING, tol=TOL)
 assert np.allclose(x, [0.368, 0.142, 0.288, 0.202], atol=1e-3), "M-ranking is wrong"
 # 1. 'np.allclose(...)': Checks if all elements in two arrays are element-wise equal within a tolerance.
 # We use this instead of '==' because floating-point operations can introduce 
@@ -61,7 +61,7 @@ assert not dmask.any(), "Fig 2.1 has no dangling nodes"
 v = np.random.default_rng(0).random(FIG_2_1_N)
 assert np.allclose(A @ v, csr_matvec(AA, JA, IA, v)), "CSR product != dense product"
 
-x_csr, k_csr, _, _ = power_method(make_matvec(AA, JA, IA, dmask),FIG_2_1_N, m=M_VAL, tol=TOL)
+x_csr, k_csr, _, _ = power_method(make_matvec(AA, JA, IA, dmask),FIG_2_1_N, m=DAMPING, tol=TOL)
 assert np.allclose(x, x_csr, atol=1e-10), "CSR path gives a different ranking"
 print(f"CSR path reproduces the dense path ({k_csr} iterations)")
 
@@ -78,7 +78,7 @@ print("dim V1(A) =", dim_V1(vals2), " -> the ranking given by A is NOT unique")
 
 """ (6) with M the ranking is unique: 0.2, 0.2, 0.285, 0.285, 0.03   [p. 6] """
 
-x2, k2, _, _ = power_method(lambda v: A2 @ v, FIG_2_2_N, m=M_VAL, tol=TOL)
+x2, k2, _, _ = power_method(lambda v: A2 @ v, FIG_2_2_N, m=DAMPING, tol=TOL)
 assert np.allclose(x2, [0.2, 0.2, 0.285, 0.285, 0.03], atol=1e-8), "M-ranking is wrong"
 print(f"M ranking  : {np.round(x2, 6)}   ({k2} iterations)")
 
