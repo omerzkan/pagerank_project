@@ -28,7 +28,7 @@ from webs import FIG_2_1, FIG_2_1_N, FIG_2_2, FIG_2_2_N
 ROOT = Path(__file__).resolve().parent.parent      # Code_HW1_HW3/
 DATA = ROOT / "data" / "hollins.dat"
 
-M_VALUES = [0.15, 0.25, 0.50, 0.85, 0.99]
+DAMPING_VALUES = [0.15, 0.25, 0.50, 0.85, 0.99]
 TOL = 1e-10
 
 def study(name, links, n, top=3):
@@ -40,7 +40,7 @@ def study(name, links, n, top=3):
     print(f"\n--- {name}   (n = {n}, tol = {TOL:g}) ---")
     print("   m   iterations    time (s)   top pages")
 
-    for m in M_VALUES:
+    for m in DAMPING_VALUES:
         t0 = time.perf_counter()
         x, k, _, _ = power_method(mv, n, m=m, tol=TOL)
         elapsed = time.perf_counter() - t0
