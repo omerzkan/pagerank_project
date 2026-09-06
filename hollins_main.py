@@ -19,7 +19,7 @@ TOL = 1e-12
 """ ************************* Load ************************* """
 
 links, urls, stats = load_dat(DATA)
-n = stats["n"]
+n = stats["n"] #number of pages in web
 assert stats["read"] == stats["declared"], "edge count does not match the header"
 print("\ndataset :", stats)
 
@@ -30,8 +30,8 @@ AA, JA, IA = build_csr(links, n)
 dmask = dangling_mask(links, n)
 mv = make_matvec(AA, JA, IA, dmask)
 
-csr_mb = (AA.nbytes + JA.nbytes + IA.nbytes) / 1e6
-dense_mb = n * n * 8 / 1e6
+csr_mb = (AA.nbytes + JA.nbytes + IA.nbytes) / 1e6      #compressed sparse row format mb
+dense_mb = n * n * 8 / 1e6                              #if not csr what would happen
 print(f"nnz     : {len(AA)}   fill = {len(AA) / n**2 * 100:.4f} %")
 print(f"storage : CSR {csr_mb:.3f} MB vs dense {dense_mb:.1f} MB "
       f"({dense_mb / csr_mb:.0f}x smaller)")

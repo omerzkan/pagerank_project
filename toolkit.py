@@ -2,6 +2,7 @@
 
 import numpy as np
 
+#generate link matris A
 
 def build_dense_A(links, n):
     
@@ -45,7 +46,7 @@ def eig_rank(A):
     # this ensures that the sum of the vector is positive
 
     return v / v.sum(), vals 
-    # we return the normalized eigenvector and the eigenvalues of A
+    # we return the normalized eigenvector and the eigenvalues of A=vals
 
 def build_M(A, m = 0.15):
     """
@@ -158,6 +159,8 @@ def build_csr(links, n):
         
     return AA, JA, IA
 
+
+#  y = Ax for csr matrices
     
 def csr_matvec(AA, JA, IA, x):
     
@@ -202,6 +205,7 @@ def dangling_mask(links, n):
     
     return mask
 
+# fix dangling node problem
 
 def make_matvec(AA, JA, IA, dmask):
     """
