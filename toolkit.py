@@ -2,281 +2,346 @@
 
 import numpy as np
 
-#generate link matris A
+# =====================================================================
+# 1.  DENSE PART -- small webs only
+# =====================================================================
 
-def build_dense_A(links, n):
+def build_A(links, n):
     
-    """ 
-    A[i, j] = 1 / n_j if page j links to page i, else 0.
-    n_j = number of links on page j.
     """
-    A = np.zeros((n, n))
+    Build the link matrix A of equation 2.1
+
+    A[i, j] = 1 / n_j if page j links to page i, 0 otherwise
     
+    where n_j is the number of outgoing links of page j
+    
+    A column of zeros means page j is dangling.
+    
+    param links: dict {page: [pages it links to]}, pages numbered 1, .. , n
+    param n: number of pages
+    return: A: 2D-array of shape (n, n)
+    """
+    A = np.zeros((n, n)) 
+    # we initialize the matrix A with zeros, then we will fill
     for j, targets in links.items():
         
         if not targets:
             continue
-            # This is dangling page j, which has no outgoing links.
+            # this is dangling page, there is no outgoing links, empty column
+        
         w = 1.0 / len(targets)
-        # len(targets) is n_j, the number of links on page j.
         
         for i in targets:
-            A[i - 1, j - 1] = w
-            
+            A[i-1, j-1] = w
+        
     return A
+    
+def build_M(A, m=0.15):
+    
+    """
+    Build M = (1-m)A + m S, equation 3.1 of paper where every entry of S equal to 1/n.
+    
+    Used only to print M and compare it with the matrices of Example 1 page 6 and equation 3.3
+    
+    The solver never builds M: for n=6012, because it would be really heavy for computer memory
 
+    param A: link matrix, 2D-array of shape (n, n)
+    param m: damping factor, 0.15 in the paper
+    return M; 2D-array of shape (n, n)
+    """
+    
+    n = A.shape[0]
+    
+    return (1.0 - m) * A + m * np.full((n, n), 1.0/n)
 
 def eig_rank(A):
     """
-    Eigenvector for eigenvalue 1 of A, and scaled to sum 1.
-    """
-    vals, vecs = np.linalg.eig(A)
-    # This returns the eigenvalues and eigenvectors of A. 
-    # The eigenvectors are the columns of vecs.
-
-    k = int(np.argmin(np.abs(vals-1.0)))
-    # np.argmin selects the minimum element inside the vector, and returns its index.
-    # numpy int is different thant he python int, so we convert it to a python int.
+    This is numpy's eigensolver, not our algorithm.
+    It is used the way np.linalg.det is used next to a hand-written determinant: to confirm.
     
-    v = np.real(vecs[: , k])
-    # this get rid of the complex part of the eigenvector to get a real vector
+    This is for CROSS-CHECKING the results of our power method, not for the actual computation of PageRank.
+    
+    param A: link matrix, 2D-array of shape (n, n)
+    return x: eigenvector for the eigenvalue closest to 1, scaled to sum 1
+    return vals: all n eigenvalues of A
+    """
+    
+    vals, vecs = np.linalg.eig(A)
+    # calculate all eigenvalues and eigenvectors of A
+    
+    k = int(np.argmin(np.abs(vals - 1.0)))
+    # find the index of the eigenvalue closest to 1
+    
+    v = np.real(vecs[:, k])
+    # take the real part of the eigenvector corresponding to the eigenvalue closest to 1
     
     if v.sum() < 0:
         v = -v
-    # this ensures that the sum of the vector is positive
-
-    return v / v.sum(), vals 
-    # we return the normalized eigenvector and the eigenvalues of A=vals
-
-def build_M(A, m = 0.15):
-    """
-    M = (1 - m) * A + m * S
-    """
-    n = A.shape[0]
-    return (1 - m) * A + m * np.full((n, n), 1.0/n)
-    # here we used np.full to create a matrix of size n x n with all entries equal to 1/n
-    # if we had used np.ones((n, n)) instead, we would have had to multiply it by 1/n, which is less efficient.
-    # We applied the formula directly
+        # if the sum of the eigenvector is negative, we flip its sign to make it positive
     
+    x = v / v.sum()
+    # scale the eigenvector to sum to 1
+    
+    return x, vals
 
-def power_method(matvec, n, m=0.15, tol=1e-10, maxit=10_000, x0=None):
+
+def dim_V1(vals, tol=1e-9):
     """
-    Power method to compute the dominant eigenvector of a matrix.
-    matvec: function that computes the matrix-vector product
-            In order to be efficient, we do not store the matrix, but we compute the product on the fly.
-    n: size of the vector
-    m: damping factor
-    tol: tolerance for convergence
-    maxit: maximum number of iterations, prevents infinite loops
-    x0: initial guess for the eigenvector
+    dimV1(A) = how many eigenvalues of A are equal to 1
+    
+    In floating point an eigenvalue is never exactly 1,
+    so equal to 1 has to be read as |lambda - 1| < tol.
+    
+    A tolerance is what turns a numerical quantity into a structural one here: 
+    dim V1(A) = 1 means the ranking is unique, dim V1(A) > 1 means it is not unique.
+    
+    param vals: eigenvalues, as returned by eig_rank
+    param tol: an eigenvalue counts as 1 when |lambda - 1| < tol
+    return dim: dimension of the eigenspace of A for the eigenvalue 1
     """
     
-    if x0 is None:
-        x = np.full(n, 1.0/n) 
-    else:
-        x = np.asarray(x0, float)  
-    
-    x = x / np.sum(x) 
-    # Normalize the initial vector as their sum should be 1
- 
-    history = []
+    dimension_v1 = int(np.sum(np.abs(vals-1.0) < tol))
+    return dimension_v1
 
-    for k in range(1, maxit+1):
-        
-        x_new = (1.0-m) * matvec(x) + m/n
-        # This is the power method iteration, where we compute the new vector as a combination of the matrix-vector product and the damping factor.
-        
-        x_new /= np.sum(x_new)  
-        # Normalize the new vector
-        
-        diff = np.abs(x_new - x).sum()
-        history.append(diff)
-        
-        x = x_new
-        
-        if diff < tol:
-            break
-        # Stopping criterion: if the difference between the new and old vector is less than the tolerance, we stop iterating.
-        
-        
-    return x, k, diff, history
+# =====================================================================
+# 2.  SPARSE PART -- CSR built by hand, no scipy
+# =====================================================================
+
 
 def build_csr(links, n):
+    
     """
-    Build a sparse matrix in Compressed Sparse Row (CSR) format.
+    Store A in compressed sparse row format, as three arrays AA, JA, IA.
     
-    we only keep the non-zero entries of the matrix, which are the links between pages.
-    In this way, we save memory and computation time, as we do not need to store or compute the zero entries of the matrix.
+        AA[k] --> the k-th non-zero value of A, read row by row
+        JA[k] --> the column index of that value
+        IA[i] --> IA[i]: i. satirin AA dizisindeki başlangic indeksini tutar.
+                i. satirdaki elemanlar AA[IA[i] : IA[i+1]] dilimindedir (slice).
+                Dizinin son elemani (IA[n]) toplam sifir disi eleman sayisina (nnz) eşittir.
+        
+    row i of A holds the backlinks of page i, column j of A holds the outgoing links of page j.
     
-    Return:
-        AA (Values) --> the non-zero entries of the matrix
-        JA (Column Indices) --> the column indices of the non-zero entries
-        IA (Row Pointers) --> the index of the first non-zero entry in each row
+    so we first count how many backlinks each page has, then fill the arrays in a second pass
+    
+    Hollins data: 6012 x 6012 = 36 million entries, only 23875 of them non-zero
+    
+    param links: dict {page: [pages it links to]}, pages numbered 1, .., n
+    param n: number of pages
+    return AA: 1D-array of non-zero values of A
+    return JA: 1D-array of their column indices
+    return IA: 1D-array of pointers, length n+1
     """
     
+    # ----- first pass: count backlinks of each page, to fill IA
     counts = np.zeros(n, dtype=np.int64)
     for j, targets in links.items():
         for i in targets:
-            counts[i-1] +=1
-            # if page j links to page i, we increment the count of non-zero entries in row i-1 (as we are using 0-based indexing)
-    
+            counts[i-1] += 1
+            # for each target page i, we increment its backlink count (0-based indexing)
+
+    # ----- second pass: fill IA
+
     IA = np.zeros(n+1, dtype=np.int64)
-    np.cumsum(counts, out=IA[1:])
-    # This is cumulative sum
+    np.cumsum(counts, out=IA[1: ])
+    # IA[i] will hold the starting index in AA for row i, and IA[n] will be the total number of non-zero entries (nnz)
+    # out = IA[1:] means we are storing the cumulative sum starting from the second element of IA, leaving IA[0] as 0
     nnz = int(IA[n])
     
-    JA = np.zeros(nnz, dtype=np.int64)
     AA = np.zeros(nnz, dtype=float)
-    # We will fill in the JA and AA arrays with the column indices and values of the non-zero entries of the matrix.
+    JA = np.zeros(nnz, dtype=np.int64)
     
+    # ---- third pass: fill AA and JA
+    next_index = IA[:n].copy()
+    # next_index[i] will point to the next available position in AA and JA for row i
+    # copying IA[:n] ensures we don't modify IA while filling AA and JA
     
-    pos = IA[: n].copy()
     for j, targets in links.items():
-        
-        d = len(targets)
-        
-        if d == 0:
+        if not targets:
             continue
-            # This is a dangling page, which has no outgoing links.
+            # if page j has no outgoing links, we skip it because it is dangling and its column full zero
         
-        w = 1.0 / d 
-        # This is the weight of the link, which is 1/n_j, where n_j is the number of links on page j.
-        
+        w = 1.0 / len(targets)
         for i in targets:
-            # every page i that is linked to by page j, we fill in the corresponding entry in the JA and AA arrays.
-            
-            p = pos[i - 1]
-            # where to put the next non-zero entry in row i-1 (as we are using 0-based indexing)
-            
-            JA[p] = j-1
-            # this non zero entry is in column j-1 (as we are using 0-based indexing)
-            
-            AA[p] = w
-            # this non zero entry has value w
-            
-            pos[i - 1] = p + 1
-            # we increment the position for the next non-zero entry in row i-1
-        
+            p = next_index[i-1] # targets 1 based and next_index is 0 based, so we subtract 1
+            AA[p] = w # fill the value in AA
+            JA[p] = j - 1 # fill the column index in JA (0-based indexing)
+            next_index[i-1] = p + 1 
+    
     return AA, JA, IA
 
-
-#  y = Ax for csr matrices
-    
 def csr_matvec(AA, JA, IA, x):
-    
-    """ 
-    y[i] = sum over backlinks j of x[j] / n_j, where n_j = number of links on page j.
-    
-    
-    AA --> the non-zero entries of the matrix
-    JA --> the column indices of the non-zero entries
-    IA --> the index of the first non-zero entry in each row
-    x --> the vector to be multiplied by the matrix
     """
-
+    Compute y = A x with A stored in CSR. 
+    row i only touches only its own non-zero entries
+    
+    y[i] = sum over k = IA[i] ... IA[i+1]-1 of AA[k] * x[JA[k]]
+    
+    param AA: 1D-array non-zero values of A
+    param JA: their column indices
+    param IA: row pointers, length n+1
+    param x: 1D-array of length n
+    return y: 1D-array of length n, equal to A x
+    """
+    
     n = len(IA) - 1
-    # Finds the number of rows in the matrix, which is the length of IA minus 1, as IA has n+1 entries.
-    # It equals the number of pages in the web, which is the same as the length of x.
-    
     y = np.zeros(n)
-    #  we put our result in y, which is initialized to a zero vector of length n.
-    
+
     for i in range(n):
-        s = 0.0
-        for p in range(IA[i], IA[i + 1]):
-            
-            s += AA[p] * x[JA[p]]
-            # calculates the score for page i by summing over all the backlinks j of page i, which are stored in the AA and JA arrays.
-            
-        y[i] = s
+        start, end = IA[i], IA[i+1]
+        y[i] = AA[start : end] @ x[JA[start: end]]
+        # the @ operator performs matrix multiplication, 
+        # which in this case is a dot product between the non-zero values of row i and the corresponding entries in x.
+    
     return y
 
-def dangling_mask(links, n):
+def dangling_pages(links, n):
     """
-    Returns a boolean array of length n, where the i-th entry is True if page i is dangling (has no outgoing links), and False otherwise.
-    """
-    mask = np.zeros(n, dtype=bool)
+    Find the pages with no outgoing links, the zero columns of A.
+    Hollins has 3189 of them
     
-    for j in range(1, n + 1):
-        if not links.get(j):
-            # if page j has no outgoing links, then it is dangling
-            mask[j - 1] = True
-            # if page j has no outgoing links, we set the j-1 entry of the mask to True (as we are using 0-based indexing)
+    param links: dict {page: [pages it links to]}, pages numbered 1, .., n
+    param n: number of pages
+    return dangling: 1D-array of the 0-based indices of the dangling pages
+    """
+    return np.array([j - 1 for j in range(1, n + 1) if not links.get(j)], dtype=np.int64)
     
-    return mask
+# =====================================================================
+# 3.  SOLVER -- the power method on equation (3.2)
+# =====================================================================
 
-# fix dangling node problem
-
-def make_matvec(AA, JA, IA, dmask):
+def pagerank(links, n, m=0.15, tol=1e-10, maxit=10000, x0=None):
+    
     """
-    Returns a function that computes the matrix-vector product for the matrix defined by AA, JA, IA, and the dangling mask.
-
-    mv(x) = A' * x with A' = A + (1/n) * e * d^T, where d^ is the dangling mask and e is the vector of all ones.
-
+    Compute the PageRank vector x by iterating equation (3.2) until convergence.
+    
+    x_{k+1} = (1-m) A x_k + m S    S = (1/n, 1/n, ..., 1/n)^T
+    
+    The matrix M = (1-m) A + m S is never built. This is the only solver in the project
+    every web, small, or large, is ranked by this function.
+    
+    DANGLING NODES: A page with no outgoing links gives a zero column, 
+    so A is only substochastic and every iteration loses the mass sitting on those pages.
+    
+    Line b gives that mass back, spread uniformly over all pages.
+    This is the same as replacing A by A + (1/n) e d^T, 
+    where d is the indicator vector of dangling pages and e is the vector of ones.
+    The corrected matrix is column-stochastic, and the power method converges to a unique solution.
+    
+    WHAT res MEASURES
+    
+    Line c makes x_{k+1} exactly M x k, so 
+    res = ||x_{k+1} - x_k ||_1 = ||M x k - x_k ||_1
+    
+    So res is not merely "the iterate stopped moving": it is the residual of the eigenvalue problem
+    M x = x, measured at x_k. Since the vector we return is x_{k+1}, one step further on, its own residual
+    is smaller still -- res is a conservative bound on the error of the answer, not just of the step.
+     
+    param links: dict {page: [pages it links to]}, pages numbered 1, .. , n
+    param n: number of pages
+    param m: damping factor, 0.15 in the paper
+    param tol: stop when the residual is below this tolerance res < tol
+    param maxit: stop after this many iterations, even if not converged (prevents infinite loops)
+    param x0: initial guess, 1D-array of length n, if None 1/n
+    
+    return x: 1D-array of length n, the PageRank vector, scaled to sum 1 (x>=0 and sum(x)=1)
+    return k: number of iterations performed
+    return res: the residual of the last iterate, ||M x_k - x_k||_1,
+    if the residual is still large the iteration DID NOT CONVERGE
     """
-    n = len(IA) - 1
-    # gives the total number of pages in the web.
-
-    inv_n = 1.0 / n
-    # gives the every page equal weight for the dangling pages, which is 1/n.
-
-    def mv(x):
-        y = csr_matvec(AA, JA, IA, x)
-        # first we compute the matrix-vector product of A and x, which gives us the contribution of the non-dangling pages to the result.
+    
+    AA, JA, IA = build_csr(links, n)
+    dangling = dangling_pages(links, n)
+    
+    # "x= x0 / sum" rather than "x0 /= sum" --> the caller's vector is not touched
+    x = np.full(n, 1.0/n) if x0 is None else np.asarray(x0, dtype=float)
+    x = x/x.sum()
+    
+    for k in range(1, maxit + 1):
         
-        return y + x[dmask].sum() * inv_n
-        # adds the contribution of the dangling pages to the result of the matrix-vector product.
+        y = csr_matvec(AA, JA, IA, x)   # STEP A: A x
+        y = y + x[dangling].sum() / n   # STEP B: Give back the dangling mass
+        x_new = (1.0 - m) * y + m/n     # STEP C: Equation 3.2
+        
+        x_new /= x_new.sum()
+        
+        # The sum is already 1 in exact arithmetic, thanks to STEP B
+        # This only removes rounding drift
+        
+        res = np.linalg.norm(x_new - x, 1) # 1-norm definition 4.1 of the paper
+        
+        x = x_new
+        
+        if res < tol:
+            break
+    return x, k, res
+        
+        
 
-    return mv
 
+# =====================================================================
+# 4.  READING THE DATASET
+# =====================================================================
 
 def load_dat(path):
     
-    with open(path, encoding='utf-8', errors="replace") as f:
+    """
+    Read the .dat file (Hollins.dat) in the assignment
+    
+    hollins.dat
+        line 1 --> n, the number of pages, and the declared link count
+        next n lines --> page index and its URL
+        rest --> one link per line, "source target", 1-based
+    
+    Two kinds of line are dropped which are stated in the paper:
+        -Self-loops --> does not count a link from a page to itself
+                        (you don't vote for yourself, you vote for others)
+        -Duplicates --> a page casts one vote split evenly among its links,
+                        so counting the same link twice would give that target a double share. 
+    param path: path to the .dat file
+    return links: dict {page: [pages it links to]}, pages numbered 1, .. , n
+    return urls: dict {page: url}
+    return stats: dict with n, declared, read, kept, self_loops, dups, dangling     
+    """
+    
+    with open(path, encoding="utf-8", errors="replace") as f:
         
         n, declared = (int(t) for t in f.readline().split())
-        # Read the header
         
         urls = {}
-        
         for _ in range(n):
             parts = f.readline().split(maxsplit=1)
-            # maxsplit=1 ensures that we only split the line into two parts, splitting on the first whitespace
             urls[int(parts[0])] = parts[1].strip() if len(parts) > 1 else ""
         
-        links = {k : [] for k in range(1, n + 1)}
-        # keys are page numbers, values are the pages each page links TO (outgoing links).
-        
-        seen, self_loops, dups, read = set(), 0, 0, 0
+        links = {k : [] for k in range(1, n+1)}
+        seen, self_loops, dups, read= set(), 0, 0, 0
         
         for line in f:
             p = line.split()
-            if len(p) < 2:
-                continue
-                # broken lines we skipped it
-                
-            s, t = int(p[0]), int(p[1])
-            # here s --> source page, t --> target page
+            if len(p) != 2:
+                continue # skip broken lines
             
+            s, t = int(p[0]), int(p[1]) # s = source page, t = target page
             read += 1
-            # number of read, it should be equal to the declared
             
-            if s == t:
+            if s==t:
                 self_loops += 1
-                continue
-                # self-loop: the paper excludes a link from a page to itself (Sec. 2.1),
-                # so the diagonal of A must stay zero.        
+                continue # skip self-loops
             
             if (s, t) in seen:
                 dups += 1
-                continue
-                # duplicate: the model gives each page ONE vote split evenly among its links.
-                # Counting the same link twice would give that target a double share.
-        
+                continue # skip duplicates
+            
             seen.add((s, t))
             links[s].append(t)
-    
-    danglings = sum(1 for v in links.values() if not v)
-    stats = dict(n=n, declared=declared, read=read, kept=len(seen), self_loops=self_loops, dups=dups, dangling=danglings)
-    
+        
+    stats = {
+        "n": n,
+        "declared": declared,
+        "read": read,
+        "kept": len(seen),
+        "self_loops": self_loops,
+        "dups": dups,
+        "dangling": len(dangling_pages(links, n))
+    }
+        
     return links, urls, stats
