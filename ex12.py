@@ -1,3 +1,6 @@
+
+""" ***** PART OF HOMEWORK 3 ***** """
+
 """
 Exercise 12 (page 8):
     "Add a sixth page that links to every page in the previous exercise (Exercise 11), but to

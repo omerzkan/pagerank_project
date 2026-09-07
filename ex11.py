@@ -1,3 +1,6 @@
+
+""" ***** PART OF HOMEWORK 1 ***** """
+
 """
 Exercise 11 (page 8):
     "Consider again the web in Figure 2.1, with the addition of a page 5 that

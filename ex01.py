@@ -1,3 +1,6 @@
+
+""" ***** PART OF HOMEWORK 3 ***** """
+
 """
 Exercise 1 (page 5):
     "Suppose the people who own page 3 in the web of Figure 2.1 are infuriated
@@ -37,4 +40,4 @@ x_new = rank_with_A(EX1_WEB, EX1_N, "AFTER, page 5 added")
 print(f"\nBefore:\nPage 3 = {x_old[2]:.6f}\nPage 1 = {x_old[0]:.6f}")
 print(f"\nAfter:\nPage 3 = {x_new[2]:.6f}\nPage 1 = {x_new[0]:.6f}")
 
-print("\nAnswer:", "YES, page 3 now outranks page " if x_new[2] > x_old[2] else "NO, page 1 still outranks page 3\n")
+print("\nAnswer:", "YES, page 3 now outranks page 1" if x_new[2] > x_new[0] else "NO, page 1 still outranks page 3\n")

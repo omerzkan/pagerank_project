@@ -1,3 +1,6 @@
+
+""" ***** PART OF HOMEWORK 3 ***** """
+
 """
 Exercise 13 (page 8):
     "Construct a web consisting of two or more subwebs and determine the

@@ -1,4 +1,6 @@
 
+""" ***** PART OF HOMEWORK 3 ***** """
+
 """
 Exercise 2 (page 5):
     "Construct a web consisting of three or more subwebs and verify that

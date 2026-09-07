@@ -1,4 +1,5 @@
 
+""" ***** PART OF HOMEWORK 3 ***** """
 
 """
 Exercise 3 (page 5):
@@ -27,4 +28,4 @@ _, vals = eig_rank(A)
 print("=== Exercise 3: Figure 2.2 with the link 5 -> 1 added ===")
 print("\neigenvalues of A:", vals)
 print(f"\ndim V1(A) = {dim_V1(vals)}   -- unchanged, although the web is now connected")
-print("\nPage 5 has no backlinks (dangling node), so row x5 = 0 and the new link carries no weight.\n")
+print("\nPage 5 has no backlinks, so row x5 = 0 and the new link carries no weight.\n")
