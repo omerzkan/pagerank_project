@@ -214,7 +214,7 @@ def pagerank(links, n, m=0.15, tol=1e-10, maxit=10000, x0=None):
     """
     Compute the PageRank vector x by iterating equation (3.2) until convergence.
     
-    x_{k+1} = (1-m) A x_k + m S    S = (1/n, 1/n, ..., 1/n)^T
+    x_{k+1} = (1-m) A x_k + m s    s = (1/n, 1/n, ..., 1/n)^T
     
     The matrix M = (1-m) A + m S is never built. This is the only solver in the project
     every web, small, or large, is ranked by this function.
@@ -230,7 +230,7 @@ def pagerank(links, n, m=0.15, tol=1e-10, maxit=10000, x0=None):
     WHAT res MEASURES
     
     Line c makes x_{k+1} exactly M x k, so 
-    res = ||x_{k+1} - x_k ||_1 = ||M x k - x_k ||_1
+    res = ||x_{k+1} - x_k ||_1 = ||M x_k - x_k ||_1
     
     So res is not merely "the iterate stopped moving": it is the residual of the eigenvalue problem
     M x = x, measured at x_k. Since the vector we return is x_{k+1}, one step further on, its own residual
