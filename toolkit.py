@@ -210,69 +210,57 @@ def dangling_pages(links, n):
 # =====================================================================
 
 def pagerank(links, n, m=0.15, tol=1e-10, maxit=10000, x0=None):
-    
+
     """
     Compute the PageRank vector x by iterating equation (3.2) until convergence.
-    
-    x_{k+1} = (1-m) A x_k + m s    s = (1/n, 1/n, ..., 1/n)^T
-    
-    The matrix M = (1-m) A + m S is never built. This is the only solver in the project
-    every web, small, or large, is ranked by this function.
-    
-    DANGLING NODES: A page with no outgoing links gives a zero column, 
-    so A is only substochastic and every iteration loses the mass sitting on those pages.
-    
-    Line b gives that mass back, spread uniformly over all pages.
-    This is the same as replacing A by A + (1/n) e d^T, 
-    where d is the indicator vector of dangling pages and e is the vector of ones.
-    The corrected matrix is column-stochastic, and the power method converges to a unique solution.
-    
-    WHAT res MEASURES
-    
-    Line c makes x_{k+1} exactly M x k, so 
-    res = ||x_{k+1} - x_k ||_1 = ||M x_k - x_k ||_1
-    
-    So res is not merely "the iterate stopped moving": it is the residual of the eigenvalue problem
-    M x = x, measured at x_k. Since the vector we return is x_{k+1}, one step further on, its own residual
-    is smaller still -- res is a conservative bound on the error of the answer, not just of the step.
-     
-    param links: dict {page: [pages it links to]}, pages numbered 1, .. , n
+
+    x_{k+1} = (1-m) A x_k + m s      s = (1/n, 1/n, ..., 1/n)^T
+
+    The matrix M = (1-m) A + m S is never built: A x is computed in CSR
+    and m s is a constant vector. This is the only solver in the project,
+    every web, small or large, is ranked by this function.
+
+    DANGLING NODES: A page with no outgoing links gives a zero column, so A
+    and M are substochastic and the Perron eigenvalue of M is smaller than 1.
+    Without any correction the iterate would shrink toward zero, so after
+    every step x is scaled to sum 1, the same choice as in Exercise 4 of the
+    paper. The ranking is the Perron eigenvector of M, scaled to sum 1.
+
+    STOPPING: res = ||x_{k+1} - x_k||_1 (1-norm, Definition 4.1). The paper
+    gives no stopping rule; we stop when res < tol or after maxit steps.
+
+    param links: dict {page: [pages it links to]}, pages numbered 1, .., n
     param n: number of pages
     param m: damping factor, 0.15 in the paper
-    param tol: stop when the residual is below this tolerance res < tol
-    param maxit: stop after this many iterations, even if not converged (prevents infinite loops)
+    param tol: stop when res < tol
+    param maxit: stop after this many iterations even if not converged
     param x0: initial guess, 1D-array of length n, if None 1/n
-    
-    return x: 1D-array of length n, the PageRank vector, scaled to sum 1 (x>=0 and sum(x)=1)
+
+    return x: 1D-array of length n, the PageRank vector (x >= 0, sum(x) = 1)
     return k: number of iterations performed
-    return res: the residual of the last iterate, ||M x_k - x_k||_1,
-    if the residual is still large the iteration DID NOT CONVERGE
+    return res: ||x_{k+1} - x_k||_1 at the last step,
+                if it is still large the iteration DID NOT CONVERGE
     """
-    
+
     AA, JA, IA = build_csr(links, n)
-    dangling = dangling_pages(links, n)
-    
-    # "x= x0 / sum" rather than "x0 /= sum" --> the caller's vector is not touched
+
+    # "x = x0 / sum" rather than "x0 /= sum" --> the caller's vector is not touched
     x = np.full(n, 1.0/n) if x0 is None else np.asarray(x0, dtype=float)
-    x = x/x.sum()
-    
+    x = x / x.sum()
+
     for k in range(1, maxit + 1):
-        
-        y = csr_matvec(AA, JA, IA, x)   # STEP A: A x
-        y = y + x[dangling].sum() / n   # STEP B: Give back the dangling mass
-        x_new = (1.0 - m) * y + m/n     # STEP C: Equation 3.2
-        
-        x_new /= x_new.sum()
-        
-        # The sum is already 1 in exact arithmetic, thanks to STEP B
-        # This only removes rounding drift
-        
-        res = np.linalg.norm(x_new - x, 1) # 1-norm definition 4.1 of the paper
-        
+
+        y = csr_matvec(AA, JA, IA, x)       # STEP A: A x
+        x_new = (1.0 - m) * y + m / n       # STEP B: equation (3.2)
+
+        x_new /= x_new.sum()                # scale to sum 1 (needed, see docstring)
+
+        res = np.linalg.norm(x_new - x, 1)  # 1-norm, definition 4.1
         x = x_new
-        
+
         if res < tol:
             break
+
     return x, k, res
         
         

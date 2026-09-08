@@ -109,20 +109,26 @@ print("computed", np.round(x2, 6), "iterations", k2, "residual", f"{res2:.1e}")
 # =====================================================================
 
 # Figure 2.1 with the link 3 -> 1 removed: page 3 now has no outgoing links, so
-# column 3 of A is zero.  Neither web of the paper has a dangling node, so
-# without this block the dangling correction inside pagerank() would be
-# untested -- it could be deleted and every check above would still pass.
+# column 3 of A is zero and A is only substochastic (Exercise 4 of the paper).
+# M = (1-m)A + mS is then positive but substochastic: its Perron eigenvalue is
+# smaller than 1, and pagerank() scales the iterate to sum 1 at every step.
+# The check: the vector pagerank() returns must be the Perron eigenvector of
+# M computed by numpy, scaled to sum 1.
 DANGLING_WEB, DANGLING_N = {1: [2, 3, 4], 2: [3, 4], 3: [], 4: [1, 3]}, 4
 
 print("\n=== Dangling node ===")
 
-A_fixed = build_A(DANGLING_WEB, DANGLING_N).copy()
-A_fixed[:, 2] += 1.0 / DANGLING_N
-check("column sums after the correction are 1", A_fixed.sum(axis=0), 1.0, 1e-10)
+A_d = build_A(DANGLING_WEB, DANGLING_N)
+print("column sums of A", A_d.sum(axis=0), " -> column 3 is zero, A is substochastic")
 
-x_dense, _ = eig_rank(build_M(A_fixed, DAMPING))
+M_d = build_M(A_d, DAMPING)
+x_dense, vals_d = eig_rank(M_d)          # eigenvalue closest to 1 = Perron eigenvalue
+lam = vals_d[np.argmin(np.abs(vals_d - 1.0))].real
+print(f"Perron eigenvalue of M = {lam:.6f}  (< 1, mass is lost at every step)")
+assert lam < 1.0
+
 xd, kd, resd = pagerank(DANGLING_WEB, DANGLING_N, m=DAMPING, tol=TOL)
-check("pagerank matches the dense corrected matrix", xd, x_dense, 1e-10)
+check("pagerank matches the Perron vector of the substochastic M", xd, x_dense, 1e-10)
 print("computed", np.round(xd, 6), "iterations", kd, "residual", f"{resd:.1e}")
 
 print("\nAll checks passed.")
